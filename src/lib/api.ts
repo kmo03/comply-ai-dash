@@ -85,9 +85,7 @@ export async function calculateBEE(sessionId: string): Promise<BEECalculationRes
 
 // Get employees for a session
 export async function getEmployees(sessionId: string): Promise<EmployeesResponse> {
-  const { data, error } = await supabase.functions.invoke('get-employees', {
-    body: { sessionId }
-  });
+  const { data, error } = await supabase.functions.invoke(`get-employees/${sessionId}`, {});
 
   if (error) {
     throw new Error(error.message || "Failed to get employees");

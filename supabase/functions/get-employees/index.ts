@@ -14,11 +14,12 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const sessionId = url.pathname.split('/').pop();
+    const pathParts = url.pathname.split('/');
+    const sessionId = pathParts[pathParts.length - 1]; // Get the last part of the path
     
-    if (!sessionId) {
+    if (!sessionId || sessionId === 'get-employees') {
       return new Response(
-        JSON.stringify({ error: 'Missing sessionId' }),
+        JSON.stringify({ error: 'Missing sessionId in URL path' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
