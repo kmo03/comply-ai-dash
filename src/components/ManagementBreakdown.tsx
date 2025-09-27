@@ -10,17 +10,17 @@ interface ManagementLevel {
 const managementLevels: ManagementLevel[] = [
   {
     title: "Senior Management",
-    current: 15,
-    points: "1/3",
+    current: 45,
+    points: "2/3",
   },
   {
     title: "Middle Management", 
-    current: 35,
-    points: "2/2",
+    current: 68,
+    points: "2/3",
   },
   {
     title: "Junior Management",
-    current: 65,
+    current: 82,
     points: "3/3",
   },
 ];
@@ -42,6 +42,14 @@ export function ManagementBreakdown() {
                 </div>
                 
                 <div className="space-y-3">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Current: {level.current}%</span>
+                    <span>Target: {
+                      level.title === "Senior Management" ? "60%" :
+                      level.title === "Middle Management" ? "75%" : "88%"
+                    }</span>
+                  </div>
+                  
                   <Progress 
                     value={level.current} 
                     className="h-2"
@@ -49,7 +57,19 @@ export function ManagementBreakdown() {
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      {level.current}% = {level.points} points
+                      Points: {level.points}
+                    </span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      (level.title === "Senior Management" && level.current >= 60) ||
+                      (level.title === "Middle Management" && level.current >= 75) ||
+                      (level.title === "Junior Management" && level.current >= 88)
+                        ? "bg-success/10 text-success" 
+                        : "bg-warning/10 text-warning"
+                    }`}>
+                      {(level.title === "Senior Management" && level.current >= 60) ||
+                       (level.title === "Middle Management" && level.current >= 75) ||
+                       (level.title === "Junior Management" && level.current >= 88)
+                        ? "On Target" : "Gap"}
                     </span>
                   </div>
                 </div>
