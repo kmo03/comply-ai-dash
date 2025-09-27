@@ -28,103 +28,105 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // OpenAI API call for data validation and standardization
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Parse CSV data into rows
+    const rows = csvData.trim().split('\n');
+    const headers = rows[0].split(',').map((h: string) => h.replace(/"/g, '').trim());
+    const dataRows = rows.slice(1);
+
+    console.log(`Processing ${dataRows.length} employee records...`);
+
+    // Process data locally for better reliability with large files
+    const processedEmployees: any[] = [];
+    const warnings: string[] = [];
+
+    // Helper functions for data standardization
+    const standardizeRace = (race: string): string => {
+      if (!race || race.trim() === '') return 'Unknown';
+      const normalized = race.toLowerCase().trim();
+      if (normalized.includes('black') || normalized === 'african') return 'African';
+      if (normalized === 'coloured') return 'Coloured';
+      if (normalized === 'indian') return 'Indian';
+      if (normalized === 'white') return 'White';
+      if (normalized === 'chinese' || normalized === 'asian') return 'Asian';
+      return race; // Keep original if not in standard categories
+    };
+
+    const standardizeGender = (gender: string): string => {
+      if (!gender || gender.trim() === '') return 'Unknown';
+      const normalized = gender.toLowerCase().trim();
+      if (normalized === 'm' || normalized === 'male') return 'Male';
+      if (normalized === 'f' || normalized === 'female') return 'Female';
+      return gender; // Keep original if already standardized
+    };
+
+    const standardizeManagementLevel = (level: string): string => {
+      if (!level || level.trim() === '') return 'Unknown';
+      const normalized = level.toLowerCase().trim();
+      if (normalized.includes('senior') || normalized.includes('snr') || normalized.includes('team lead')) return 'Senior';
+      if (normalized.includes('middle') || normalized === 'manager') return 'Middle';
+      if (normalized.includes('junior')) return 'Junior';
+      return level; // Keep original if already standardized
+    };
+
+    // Process each row
+    for (let i = 0; i < dataRows.length; i++) {
+      try {
+        const row = dataRows[i];
+        if (!row.trim()) continue; // Skip empty rows
+
+        // Simple CSV parsing (handles basic cases)
+        const values: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let char of row) {
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim()); // Add the last value
+
+        // Map values to expected structure
+        const nameIndex = headers.findIndex((h: string) => h.toLowerCase().includes('name'));
+        const raceIndex = headers.findIndex((h: string) => h.toLowerCase().includes('race'));
+        const genderIndex = headers.findIndex((h: string) => h.toLowerCase().includes('gender'));
+        const levelIndex = headers.findIndex((h: string) => h.toLowerCase().includes('management') || h.toLowerCase().includes('level'));
+
+        const name = values[nameIndex] || `Employee ${i + 1}`;
+        const rawRace = values[raceIndex] || '';
+        const rawGender = values[genderIndex] || '';
+        const rawLevel = values[levelIndex] || '';
+
+        const employee = {
+          name: name.replace(/"/g, ''),
+          race: standardizeRace(rawRace.replace(/"/g, '')),
+          gender: standardizeGender(rawGender.replace(/"/g, '')),
+          management_level: standardizeManagementLevel(rawLevel.replace(/"/g, ''))
+        };
+
+        // Add warnings for missing data
+        if (!rawRace.trim()) warnings.push(`Race field empty for ${employee.name}`);
+        if (!rawGender.trim()) warnings.push(`Gender field empty for ${employee.name}`);
+        if (!rawLevel.trim()) warnings.push(`Management level field empty for ${employee.name}`);
+
+        processedEmployees.push(employee);
+      } catch (rowError) {
+        console.error(`Error processing row ${i + 1}:`, rowError);
+        warnings.push(`Failed to process row ${i + 1}`);
+      }
     }
 
-    const prompt = `
-You are a data standardization tool for BEE compliance. Your job is to ONLY standardize the format of data that is explicitly provided - DO NOT make assumptions or inferences about missing data.
+    const parsedData = {
+      employees: processedEmployees,
+      warnings: warnings
+    };
 
-CSV Data to process:
-${csvData}
-
-CRITICAL RULES:
-1. NEVER guess or infer race from names - only use the race data explicitly provided in the CSV
-2. NEVER guess gender from names - only use the gender data explicitly provided in the CSV  
-3. Only standardize the FORMAT of existing data, do not fill in missing data
-
-Standardization rules (ONLY apply to explicitly provided data):
-- Race formatting: "Black African" or "Black" → "African", "Coloured" stays "Coloured", "Indian" stays "Indian", "White" stays "White"
-- Gender formatting: "M" → "Male", "F" → "Female", "Male/Female" stay as-is
-- Management Level formatting: "Snr Manager" → "Senior", "Team Lead" → "Senior", "Manager" → "Middle", "Junior" stays "Junior"
-
-If any field is empty, missing, or unclear in the original CSV, mark it as "Unknown" in warnings.
-
-Return ONLY valid JSON (no markdown):
-{
-  "employees": [
-    {
-      "name": "John Doe",
-      "race": "African", 
-      "gender": "Male",
-      "management_level": "Senior"
-    }
-  ],
-  "warnings": [
-    "Race field empty for Michael Chen - marked as Unknown",
-    "Gender unclear for Jane Smith - marked as Unknown"
-  ]
-}
-`;
-
-    console.log('Calling OpenAI for CSV processing...');
-    
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a data processing expert for BEE compliance. Return only valid JSON without markdown formatting. Keep responses concise and focused only on the required data structure.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 4000,
-        temperature: 0.1,
-      }),
-    });
-
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to process data with AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const openAIData = await openAIResponse.json();
-    const aiResponseText = openAIData.choices[0].message.content;
-    
-    console.log('Raw AI response:', aiResponseText);
-
-    // Parse the AI response
-    let parsedData;
-    try {
-      // Clean the response in case it has markdown formatting
-      const cleanedResponse = aiResponseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
-      
-      parsedData = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError, 'Raw response:', aiResponseText);
-      return new Response(
-        JSON.stringify({ error: 'Invalid AI response format' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log(`Successfully processed ${processedEmployees.length} employees with ${warnings.length} warnings`);
 
     // Store the processed data in Supabase
     if (parsedData.employees && parsedData.employees.length > 0) {
