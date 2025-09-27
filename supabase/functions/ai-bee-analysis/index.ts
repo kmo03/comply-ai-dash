@@ -36,8 +36,32 @@ function calculateBEECompliance(employees) {
   const standardizedEmployees = employees.map(emp => ({
     race: standardizeRace(emp.race),
     gender: standardizeGender(emp.gender),
-    management_level: standardizeManagementLevel(emp.management_level)
+    management_level: standardizeManagementLevel(emp.management_level),
+    // Keep original for debugging
+    original_race: emp.race,
+    original_gender: emp.gender,
+    original_management_level: emp.management_level
   }));
+
+  // === DEBUG LOGGING ===
+  console.log('=== BEE CALCULATION DEBUG ===');
+  console.log('Total employees:', standardizedEmployees.length);
+  
+  // Log how each employee was standardized
+  standardizedEmployees.forEach((emp, index) => {
+    console.log(`Employee ${index + 1}:`, {
+      original: {
+        race: emp.original_race,
+        gender: emp.original_gender, 
+        level: emp.original_management_level
+      },
+      standardized: {
+        race: emp.race,
+        gender: emp.gender,
+        level: emp.management_level
+      }
+    });
+  });
 
   // Count employees by management level
   const levels = ['Senior', 'Middle', 'Junior'];
@@ -59,6 +83,20 @@ function calculateBEECompliance(employees) {
       black_percentage: parseFloat(blackPercentage.toFixed(1)),
       black_female_percentage: parseFloat(blackFemalePercentage.toFixed(1))
     };
+
+    // === LEVEL-SPECIFIC DEBUGGING ===
+    console.log(`=== ${level} MANAGEMENT DEBUG ===`);
+    console.log('Total in level:', total);
+    console.log('Black employees in level:', blackEmployees.length);
+    console.log('Black female employees in level:', blackFemaleEmployees.length);
+    console.log('Black percentage:', blackPercentage.toFixed(1) + '%');
+    console.log('Black female percentage:', blackFemalePercentage.toFixed(1) + '%');
+    
+    // List actual employees in this level for verification
+    console.log('Employees in this level:');
+    levelEmployees.forEach(emp => {
+      console.log(`- ${emp.original_race} | ${emp.original_gender} | ${emp.original_management_level} → ${emp.race} | ${emp.gender} | ${emp.management_level}`);
+    });
   });
 
   // Apply STRICT BINARY scoring
@@ -68,6 +106,9 @@ function calculateBEECompliance(employees) {
     junior_management: { black: 88, black_female: 44, black_points: 2, black_female_points: 1 }
   };
 
+  // === THRESHOLD DEBUGGING ===
+  console.log('=== THRESHOLD CHECKS ===');
+
   let totalPoints = 0;
   const results = {};
 
@@ -75,24 +116,26 @@ function calculateBEECompliance(employees) {
     const data = counts[level];
     const target = targets[level];
     
-    if (target) {
-      const blackPoints = data.black_percentage >= target.black ? target.black_points : 0;
-      const blackFemalePoints = data.black_female_percentage >= target.black_female ? target.black_female_points : 0;
-      const levelTotalPoints = blackPoints + blackFemalePoints;
-      
-      results[level] = {
-        ...data,
-        black_target: target.black,
-        black_met_target: data.black_percentage >= target.black,
-        black_points: blackPoints,
-        black_female_target: target.black_female,
-        black_female_met_target: data.black_female_percentage >= target.black_female,
-        black_female_points: blackFemalePoints,
-        level_total_points: levelTotalPoints
-      };
-      
-      totalPoints += levelTotalPoints;
-    }
+    const blackPoints = data.black_percentage >= target.black ? target.black_points : 0;
+    const blackFemalePoints = data.black_female_percentage >= target.black_female ? target.black_female_points : 0;
+    const levelTotalPoints = blackPoints + blackFemalePoints;
+    
+    console.log(`--- ${level.toUpperCase()} ---`);
+    console.log(`Black: ${data.black_percentage}% >= ${target.black}% ?`, data.black_percentage >= target.black, `Points: ${blackPoints}`);
+    console.log(`Black Female: ${data.black_female_percentage}% >= ${target.black_female}% ?`, data.black_female_percentage >= target.black_female, `Points: ${blackFemalePoints}`);
+    
+    results[level] = {
+      ...data,
+      black_target: target.black,
+      black_met_target: data.black_percentage >= target.black,
+      black_points: blackPoints,
+      black_female_target: target.black_female,
+      black_female_met_target: data.black_female_percentage >= target.black_female,
+      black_female_points: blackFemalePoints,
+      level_total_points: levelTotalPoints
+    };
+    
+    totalPoints += levelTotalPoints;
   });
 
   // Calculate disabilities (hardcoded to 0% for now)
@@ -105,15 +148,46 @@ function calculateBEECompliance(employees) {
     black_disabled_points: 0
   };
 
+  // Check for disabled employees
+  const disabledEmployees = standardizedEmployees.filter(emp => 
+    emp.original_race && emp.original_race.toLowerCase().includes('disabled')
+  );
+  if (disabledEmployees.length > 0) {
+    const blackDisabled = disabledEmployees.filter(emp => emp.race === 'Black').length;
+    disabilityData.black_disabled_employees = blackDisabled;
+    disabilityData.black_disabled_percentage = (blackDisabled / standardizedEmployees.length) * 100;
+    disabilityData.black_disabled_met_target = disabilityData.black_disabled_percentage >= 2;
+    disabilityData.black_disabled_points = disabilityData.black_disabled_met_target ? 2 : 0;
+  }
+
   totalPoints += disabilityData.black_disabled_points;
+
+  console.log('=== DISABILITIES DEBUG ===');
+  console.log('Disabled employees found:', disabledEmployees.length);
+  console.log('Black disabled employees:', disabilityData.black_disabled_employees);
+  console.log('Black disabled percentage:', disabilityData.black_disabled_percentage.toFixed(1) + '%');
+  console.log('Disability points:', disabilityData.black_disabled_points);
+
+  // === FINAL DEBUG SUMMARY ===
+  console.log('=== FINAL SCORE DEBUG ===');
+  console.log('Total points calculated:', totalPoints);
+  console.log('Max possible points: 11');
+  console.log('Compliance status:', totalPoints >= 8 ? 'Compliant' : 'Non-Compliant');
 
   return {
     ...results,
     disabilities: disabilityData,
     total_points: totalPoints,
-    max_points: 11, // 9 from management levels + 2 from disabilities
-    compliance_status: totalPoints >= 8 ? 'Compliant' : 'Non-Compliant', // Adjust threshold as needed
-    employee_count: standardizedEmployees.length
+    max_points: 11,
+    compliance_status: totalPoints >= 8 ? 'Compliant' : 'Non-Compliant',
+    employee_count: standardizedEmployees.length,
+    
+    // === DEBUG INFO IN RESPONSE ===
+    _debug: {
+      standardized_employees: standardizedEmployees,
+      level_counts: counts,
+      thresholds_used: targets
+    }
   };
 }
 
