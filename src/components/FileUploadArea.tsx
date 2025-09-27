@@ -111,7 +111,10 @@ export function FileUploadArea() {
                   Upload Employee Data
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  Drag and drop your CSV or Excel file here, or click to browse
+                  Drag and drop your file here, or click to browse
+                </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  CSV format required with columns: Name, Race, Gender, Management_Level
                 </p>
                 
                 <input
@@ -129,7 +132,7 @@ export function FileUploadArea() {
                 </Button>
                 
                 <p className="text-xs text-muted-foreground mt-3">
-                  Supported formats: CSV, Excel (.xlsx, .xls)
+                  CSV format required with columns: Name, Race, Gender, Management_Level
                 </p>
               </div>
             </div>

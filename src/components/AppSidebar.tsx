@@ -51,33 +51,6 @@ export function AppSidebar() {
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <Table className="mr-2 h-4 w-4" />
-                    <span>Data</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    <span>Analysis</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

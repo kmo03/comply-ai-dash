@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { BEEScoreCard } from "@/components/BEEScoreCard";
 import { ManagementBreakdown } from "@/components/ManagementBreakdown";
 import { FileUploadArea } from "@/components/FileUploadArea";
-import { GapAnalysis } from "@/components/GapAnalysis";
+
 import { DataPreviewTable } from "@/components/DataPreviewTable";
 
 const Index = () => {
@@ -31,8 +31,8 @@ const Index = () => {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div className="lg:col-span-1">
                 <BEEScoreCard 
-                  score={65} 
-                  maxScore={100} 
+                  score={8} 
+                  maxScore={11} 
                   level="Level 6 Contributor" 
                 />
               </div>
@@ -45,10 +45,9 @@ const Index = () => {
             {/* Management Breakdown */}
             <ManagementBreakdown />
 
-            {/* Bottom Row - Data Preview and Gap Analysis */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            {/* Bottom Row - Data Preview */}
+            <div className="mb-6">
               <DataPreviewTable />
-              <GapAnalysis />
             </div>
           </main>
         </div>
