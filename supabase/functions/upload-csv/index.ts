@@ -38,20 +38,24 @@ serve(async (req) => {
     }
 
     const prompt = `
-Parse and validate this employee data for BEE compliance:
+You are a data standardization tool for BEE compliance. Your job is to ONLY standardize the format of data that is explicitly provided - DO NOT make assumptions or inferences about missing data.
+
+CSV Data to process:
 ${csvData}
 
-Standardize the data to:
-- Race: African, Coloured, Indian, White (convert "Black African"→"African", "Black"→"African", etc.)
-- Gender: Male, Female (convert "M"→"Male", "F"→"Female")  
-- Management Level: Senior, Middle, Junior (convert "Snr Manager"→"Senior", "Team Lead"→"Senior", "Manager"→"Middle", etc.)
+CRITICAL RULES:
+1. NEVER guess or infer race from names - only use the race data explicitly provided in the CSV
+2. NEVER guess gender from names - only use the gender data explicitly provided in the CSV  
+3. Only standardize the FORMAT of existing data, do not fill in missing data
 
-Important:
-- Return ONLY valid JSON, no markdown formatting
-- Include all rows that can be processed
-- Flag any data quality issues in warnings
+Standardization rules (ONLY apply to explicitly provided data):
+- Race formatting: "Black African" or "Black" → "African", "Coloured" stays "Coloured", "Indian" stays "Indian", "White" stays "White"
+- Gender formatting: "M" → "Male", "F" → "Female", "Male/Female" stay as-is
+- Management Level formatting: "Snr Manager" → "Senior", "Team Lead" → "Senior", "Manager" → "Middle", "Junior" stays "Junior"
 
-Return JSON format:
+If any field is empty, missing, or unclear in the original CSV, mark it as "Unknown" in warnings.
+
+Return ONLY valid JSON (no markdown):
 {
   "employees": [
     {
@@ -62,8 +66,8 @@ Return JSON format:
     }
   ],
   "warnings": [
-    "Gender field empty for 2 employees",
-    "'Team Lead' classification unclear - assigned to Senior"
+    "Race field empty for Michael Chen - marked as Unknown",
+    "Gender unclear for Jane Smith - marked as Unknown"
   ]
 }
 `;
