@@ -77,7 +77,7 @@ Return JSON format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -85,7 +85,8 @@ Return JSON format:
           },
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
+        temperature: 0.3,
       }),
     });
 
