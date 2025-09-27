@@ -9,19 +9,68 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+// Type definitions
+interface Employee {
+  race: string;
+  gender: string;
+  management_level: string;
+  original_race?: string;
+}
+
+interface StandardizedEmployee {
+  race: string;
+  gender: string;
+  management_level: string;
+  original_race?: string;
+}
+
+interface ManagementLevelData {
+  total_employees: number;
+  black_employees: number;
+  black_female_employees: number;
+  black_percentage: number;
+  black_female_percentage: number;
+  black_target?: number;
+  black_met_target?: boolean;
+  black_points?: number;
+  black_female_target?: number;
+  black_female_met_target?: boolean;
+  black_female_points?: number;
+  level_total_points?: number;
+}
+
+interface CountsData {
+  [key: string]: ManagementLevelData;
+}
+
+interface TargetData {
+  black: number;
+  black_female: number;
+  black_points: number;
+  black_female_points: number;
+}
+
+interface TargetsData {
+  [key: string]: TargetData;
+}
+
+interface ResultsData {
+  [key: string]: ManagementLevelData;
+}
+
 // Standardization functions (local, reliable)
-function standardizeRace(race) {
+function standardizeRace(race: string | null | undefined): string {
   if (!race) return 'Other';
   const blackRaces = ['african', 'black african', 'black', 'coloured', 'indian', 'chinese'];
   return blackRaces.includes(race.toLowerCase()) ? 'Black' : 'Other';
 }
 
-function standardizeGender(gender) {
+function standardizeGender(gender: string | null | undefined): string {
   if (!gender) return 'Male';
   return gender.toLowerCase().startsWith('f') ? 'Female' : 'Male';
 }
 
-function standardizeManagementLevel(level) {
+function standardizeManagementLevel(level: string | null | undefined): string {
   if (!level) return 'Junior';
   const levelLower = level.toLowerCase();
   if (levelLower.includes('senior') || levelLower.includes('exec') || levelLower === 'executive') return 'Senior';
@@ -31,23 +80,24 @@ function standardizeManagementLevel(level) {
 }
 
 // Core calculation logic (local, reliable)
-function calculateBEECompliance(employees) {
+function calculateBEECompliance(employees: Employee[]) {
   // First, standardize the data locally
-  const standardizedEmployees = employees.map(emp => ({
+  const standardizedEmployees: StandardizedEmployee[] = employees.map((emp: Employee) => ({
     race: standardizeRace(emp.race),
     gender: standardizeGender(emp.gender),
-    management_level: standardizeManagementLevel(emp.management_level)
+    management_level: standardizeManagementLevel(emp.management_level),
+    original_race: emp.race // Keep original for disability checking
   }));
 
   // Count employees by management level
   const levels = ['Senior', 'Middle', 'Junior'];
-  const counts = {};
+  const counts: CountsData = {};
   
   levels.forEach(level => {
-    const levelEmployees = standardizedEmployees.filter(emp => emp.management_level === level);
+    const levelEmployees = standardizedEmployees.filter((emp: StandardizedEmployee) => emp.management_level === level);
     const total = levelEmployees.length;
-    const blackEmployees = levelEmployees.filter(emp => emp.race === 'Black');
-    const blackFemaleEmployees = blackEmployees.filter(emp => emp.gender === 'Female');
+    const blackEmployees = levelEmployees.filter((emp: StandardizedEmployee) => emp.race === 'Black');
+    const blackFemaleEmployees = blackEmployees.filter((emp: StandardizedEmployee) => emp.gender === 'Female');
     
     const blackPercentage = total > 0 ? (blackEmployees.length / total) * 100 : 0;
     const blackFemalePercentage = total > 0 ? (blackFemaleEmployees.length / total) * 100 : 0;
@@ -62,14 +112,14 @@ function calculateBEECompliance(employees) {
   });
 
   // Apply STRICT BINARY scoring with >= (FIXED: was using > instead of >=)
-  const targets = {
+  const targets: TargetsData = {
     senior_management: { black: 60, black_female: 30, black_points: 2, black_female_points: 1 },
     middle_management: { black: 75, black_female: 38, black_points: 2, black_female_points: 1 },
     junior_management: { black: 88, black_female: 44, black_points: 2, black_female_points: 1 }
   };
 
   let totalPoints = 0;
-  const results = {};
+  const results: ResultsData = {};
 
   Object.keys(counts).forEach(level => {
     const data = counts[level];
@@ -107,11 +157,11 @@ function calculateBEECompliance(employees) {
   };
 
   // Check for disabled employees
-  const disabledEmployees = standardizedEmployees.filter(emp => 
+  const disabledEmployees = standardizedEmployees.filter((emp: StandardizedEmployee) => 
     emp.original_race && emp.original_race.toLowerCase().includes('disabled')
   );
   if (disabledEmployees.length > 0) {
-    const blackDisabled = disabledEmployees.filter(emp => emp.race === 'Black').length;
+    const blackDisabled = disabledEmployees.filter((emp: StandardizedEmployee) => emp.race === 'Black').length;
     disabilityData.black_disabled_employees = blackDisabled;
     disabilityData.black_disabled_percentage = (blackDisabled / standardizedEmployees.length) * 100;
     disabilityData.black_disabled_met_target = disabilityData.black_disabled_percentage >= 2; // FIXED: >=
