@@ -1,13 +1,31 @@
+import { useEffect, useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/Header";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BEEScoreCard } from "@/components/BEEScoreCard";
 import { ManagementBreakdown } from "@/components/ManagementBreakdown";
 import { FileUploadArea } from "@/components/FileUploadArea";
-
 import { DataPreviewTable } from "@/components/DataPreviewTable";
+import { useSession } from "@/hooks/useSession";
+import { useBEEData } from "@/hooks/useBEEData";
 
 const Index = () => {
+  const { sessionId } = useSession();
+  const { isProcessing, employees, beeResult, warnings, processCSVFile, loadExistingData } = useBEEData(sessionId);
+
+  // Load existing data on component mount
+  useEffect(() => {
+    loadExistingData();
+  }, [loadExistingData]);
+
+  const handleFileSelect = async (file: File) => {
+    try {
+      await processCSVFile(file);
+    } catch (error) {
+      console.error('Failed to process file:', error);
+    }
+  };
+
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-background">
@@ -30,24 +48,23 @@ const Index = () => {
             {/* Top Row - Score and Upload */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div className="lg:col-span-1">
-                <BEEScoreCard 
-                  score={8} 
-                  maxScore={11} 
-                  level="Level 6 Contributor" 
-                />
+                <BEEScoreCard beeResult={beeResult} />
               </div>
               
               <div className="lg:col-span-2">
-                <FileUploadArea />
+                <FileUploadArea 
+                  onFileSelect={handleFileSelect}
+                  isProcessing={isProcessing}
+                />
               </div>
             </div>
 
             {/* Management Breakdown */}
-            <ManagementBreakdown />
+            <ManagementBreakdown beeResult={beeResult} />
 
             {/* Bottom Row - Data Preview */}
             <div className="mb-6">
-              <DataPreviewTable />
+              <DataPreviewTable employees={employees} />
             </div>
           </main>
         </div>

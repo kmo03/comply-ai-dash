@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { BEECalculationResult } from "@/lib/api";
 
 interface BEEScoreCardProps {
-  score: number;
-  maxScore: number;
-  level: string;
+  beeResult?: BEECalculationResult | null;
 }
 
-export function BEEScoreCard({ score, maxScore, level }: BEEScoreCardProps) {
+export function BEEScoreCard({ beeResult }: BEEScoreCardProps) {
+  // Use real data if available, otherwise default values
+  const score = beeResult ? beeResult.totalScore : 8;
+  const maxScore = 11;
+
   return (
     <Card className="shadow-card hover:shadow-hover transition-shadow duration-200">
       <CardHeader className="pb-3">

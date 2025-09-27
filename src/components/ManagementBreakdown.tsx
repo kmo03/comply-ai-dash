@@ -1,31 +1,56 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { BEECalculationResult } from "@/lib/api";
 
-interface ManagementLevel {
-  title: string;
-  current: number;
-  points: string;
+interface ManagementBreakdownProps {
+  beeResult?: BEECalculationResult | null;
 }
 
-const managementLevels: ManagementLevel[] = [
-  {
-    title: "Senior Management",
-    current: 45,
-    points: "2/3",
-  },
-  {
-    title: "Middle Management", 
-    current: 68,
-    points: "2/3",
-  },
-  {
-    title: "Junior Management",
-    current: 82,
-    points: "3/3",
-  },
-];
+export function ManagementBreakdown({ beeResult }: ManagementBreakdownProps) {
+  // Default static data if no BEE result is available
+  const defaultData = [
+    {
+      title: "Senior Management",
+      current: 45,
+      points: "2/3",
+      target: 60,
+    },
+    {
+      title: "Middle Management", 
+      current: 68,
+      points: "2/3",
+      target: 75,
+    },
+    {
+      title: "Junior Management",
+      current: 82,
+      points: "3/3",
+      target: 88,
+    },
+  ];
 
-export function ManagementBreakdown() {
+  // Use real data if available, otherwise fall back to default
+  const managementLevels = beeResult ? [
+    {
+      title: "Senior Management",
+      current: Math.round(beeResult.seniorManagement.blackPercentage),
+      points: `${beeResult.seniorManagement.totalPoints}/3`,
+      target: 60,
+    },
+    {
+      title: "Middle Management",
+      current: Math.round(beeResult.middleManagement.blackPercentage),
+      points: `${beeResult.middleManagement.totalPoints}/3`,
+      target: 75,
+    },
+    {
+      title: "Junior Management",
+      current: Math.round(beeResult.juniorManagement.blackPercentage),
+      points: `${beeResult.juniorManagement.totalPoints}/3`,
+      target: 88,
+    },
+  ] : defaultData;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -34,6 +59,8 @@ export function ManagementBreakdown() {
       
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
         {managementLevels.map((level) => {
+          const isOnTarget = level.current >= level.target;
+          
           return (
             <Card key={level.title} className="shadow-card hover:shadow-hover transition-shadow duration-200">
               <CardContent className="p-6">
@@ -44,10 +71,7 @@ export function ManagementBreakdown() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-xs text-muted-foreground mb-1">
                     <span>Current: {level.current}%</span>
-                    <span>Target: {
-                      level.title === "Senior Management" ? "60%" :
-                      level.title === "Middle Management" ? "75%" : "88%"
-                    }</span>
+                    <span>Target: {level.target}%</span>
                   </div>
                   
                   <Progress 
@@ -60,16 +84,11 @@ export function ManagementBreakdown() {
                       Points: {level.points}
                     </span>
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      (level.title === "Senior Management" && level.current >= 60) ||
-                      (level.title === "Middle Management" && level.current >= 75) ||
-                      (level.title === "Junior Management" && level.current >= 88)
+                      isOnTarget
                         ? "bg-success/10 text-success" 
                         : "bg-warning/10 text-warning"
                     }`}>
-                      {(level.title === "Senior Management" && level.current >= 60) ||
-                       (level.title === "Middle Management" && level.current >= 75) ||
-                       (level.title === "Junior Management" && level.current >= 88)
-                        ? "On Target" : "Gap"}
+                      {isOnTarget ? "On Target" : "Gap"}
                     </span>
                   </div>
                 </div>

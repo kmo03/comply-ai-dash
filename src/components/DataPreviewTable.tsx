@@ -8,24 +8,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Employee } from "@/lib/api";
 
-interface Employee {
-  id: number;
-  name: string;
-  race: string;
-  gender: string;
-  managementLevel: string;
+interface DataPreviewTableProps {
+  employees?: Employee[];
 }
 
 const mockEmployeeData: Employee[] = [
-  { id: 1, name: "Sarah Johnson", race: "Black African", gender: "Female", managementLevel: "Senior" },
-  { id: 2, name: "Michael Chen", race: "Chinese", gender: "Male", managementLevel: "Middle" },
-  { id: 3, name: "Nomsa Mbeki", race: "Black African", gender: "Female", managementLevel: "Senior" },
-  { id: 4, name: "David Wilson", race: "White", gender: "Male", managementLevel: "Middle" },
-  { id: 5, name: "Priya Patel", race: "Indian", gender: "Female", managementLevel: "Junior" },
-  { id: 6, name: "Thabo Mthembu", race: "Black African", gender: "Male", managementLevel: "Junior" },
-  { id: 7, name: "Lisa van der Merwe", race: "Coloured", gender: "Female", managementLevel: "Middle" },
-  { id: 8, name: "Ahmed Hassan", race: "Black African", gender: "Male", managementLevel: "Senior" },
+  { id: 1, name: "Sarah Johnson", race: "African", gender: "Female", management_level: "Senior" },
+  { id: 2, name: "Michael Chen", race: "White", gender: "Male", management_level: "Middle" },
+  { id: 3, name: "Nomsa Mbeki", race: "African", gender: "Female", management_level: "Senior" },
+  { id: 4, name: "David Wilson", race: "White", gender: "Male", management_level: "Middle" },
+  { id: 5, name: "Priya Patel", race: "Indian", gender: "Female", management_level: "Junior" },
+  { id: 6, name: "Thabo Mthembu", race: "African", gender: "Male", management_level: "Junior" },
+  { id: 7, name: "Lisa van der Merwe", race: "Coloured", gender: "Female", management_level: "Middle" },
+  { id: 8, name: "Ahmed Hassan", race: "African", gender: "Male", management_level: "Senior" },
 ];
 
 const getLevelBadgeColor = (level: string) => {
@@ -41,7 +38,11 @@ const getLevelBadgeColor = (level: string) => {
   }
 };
 
-export function DataPreviewTable() {
+export function DataPreviewTable({ employees = [] }: DataPreviewTableProps) {
+  // Use real data if available, otherwise show mock data
+  const displayData = employees.length > 0 ? employees : mockEmployeeData;
+  const isRealData = employees.length > 0;
+  
   return (
     <Card className="shadow-card hover:shadow-hover transition-shadow duration-200">
       <CardHeader>
@@ -49,7 +50,10 @@ export function DataPreviewTable() {
           Employee Data Preview
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Showing {mockEmployeeData.length} employees from uploaded data
+          {isRealData 
+            ? `Showing ${displayData.length} employees from uploaded data`
+            : `Sample data - upload a CSV file to see your actual employee data`
+          }
         </p>
       </CardHeader>
       
@@ -65,9 +69,9 @@ export function DataPreviewTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockEmployeeData.map((employee) => (
+              {displayData.map((employee, index) => (
                 <TableRow 
-                  key={employee.id}
+                  key={employee.id || index}
                   className="hover:bg-secondary/30 transition-colors duration-150"
                 >
                   <TableCell className="font-medium">{employee.name}</TableCell>
@@ -76,9 +80,9 @@ export function DataPreviewTable() {
                   <TableCell>
                     <Badge 
                       variant="outline" 
-                      className={getLevelBadgeColor(employee.managementLevel)}
+                      className={getLevelBadgeColor(employee.management_level)}
                     >
-                      {employee.managementLevel}
+                      {employee.management_level}
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -88,8 +92,13 @@ export function DataPreviewTable() {
         </div>
         
         <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
-          <span>Total employees: {mockEmployeeData.length}</span>
-          <span>Last updated: Today at 2:30 PM</span>
+          <span>Total employees: {displayData.length}</span>
+          <span>
+            {isRealData 
+              ? "Data processed and calculated" 
+              : "Upload CSV to see real data"
+            }
+          </span>
         </div>
       </CardContent>
     </Card>

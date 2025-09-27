@@ -1,1 +1,17 @@
 project_id = "zcoujabadzgrouqrrmcp"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[functions.upload-csv]
+verify_jwt = false
+
+[functions.calculate-bee]
+verify_jwt = false
+
+[functions.get-employees]
+verify_jwt = false
