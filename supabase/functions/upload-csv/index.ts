@@ -85,12 +85,12 @@ Return ONLY valid JSON (no markdown):
         messages: [
           { 
             role: 'system', 
-            content: 'You are a data processing expert for BEE compliance. Return only valid JSON without markdown formatting.' 
+            content: 'You are a data processing expert for BEE compliance. Return only valid JSON without markdown formatting. Keep responses concise and focused only on the required data structure.' 
           },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 2000,
-        temperature: 0.3,
+        max_tokens: 1500,
+        temperature: 0.1,
       }),
     });
 
