@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.get-employees]
 verify_jwt = false
+
+[functions.ai-bee-analysis]
+verify_jwt = false

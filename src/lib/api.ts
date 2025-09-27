@@ -44,6 +44,54 @@ export interface BEECalculationResult {
   maxScore: number;
 }
 
+export interface AIBEEAnalysisResult {
+  senior_management: {
+    total_employees: number;
+    black_employees: number;
+    black_female_employees: number;
+    black_percentage: number;
+    black_target: number;
+    black_met_target: boolean;
+    black_points: number;
+    black_female_percentage: number;
+    black_female_target: number;
+    black_female_met_target: boolean;
+    black_female_points: number;
+    level_total_points: number;
+  };
+  middle_management: {
+    total_employees: number;
+    black_employees: number;
+    black_female_employees: number;
+    black_percentage: number;
+    black_target: number;
+    black_met_target: boolean;
+    black_points: number;
+    black_female_percentage: number;
+    black_female_target: number;
+    black_female_met_target: boolean;
+    black_female_points: number;
+    level_total_points: number;
+  };
+  junior_management: {
+    total_employees: number;
+    black_employees: number;
+    black_female_employees: number;
+    black_percentage: number;
+    black_target: number;
+    black_met_target: boolean;
+    black_points: number;
+    black_female_percentage: number;
+    black_female_target: number;
+    black_female_met_target: boolean;
+    black_female_points: number;
+    level_total_points: number;
+  };
+  total_points: number;
+  max_points: number;
+  compliance_status: string;
+}
+
 export interface UploadResponse {
   success: boolean;
   employees: Employee[];
@@ -81,6 +129,23 @@ export async function calculateBEE(sessionId: string): Promise<BEECalculationRes
   }
 
   return data;
+}
+
+// Calculate BEE scores with AI analysis
+export async function calculateBEEWithAI(sessionId: string): Promise<AIBEEAnalysisResult> {
+  const { data, error } = await supabase.functions.invoke('ai-bee-analysis', {
+    body: { sessionId }
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to calculate BEE scores with AI");
+  }
+
+  if (!data.success) {
+    throw new Error(data.error || "AI analysis failed");
+  }
+
+  return data.analysis;
 }
 
 // Get employees for a session
