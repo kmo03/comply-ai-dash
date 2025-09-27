@@ -89,7 +89,7 @@ Return ONLY valid JSON (no markdown):
           },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 1500,
+        max_tokens: 4000,
         temperature: 0.1,
       }),
     });
