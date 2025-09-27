@@ -9,13 +9,121 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+// Standardization functions (local, reliable)
+function standardizeRace(race) {
+  if (!race) return 'Other';
+  const blackRaces = ['african', 'black african', 'black', 'coloured', 'indian', 'chinese'];
+  return blackRaces.includes(race.toLowerCase()) ? 'Black' : 'Other';
+}
+
+function standardizeGender(gender) {
+  if (!gender) return 'Male';
+  return gender.toLowerCase().startsWith('f') ? 'Female' : 'Male';
+}
+
+function standardizeManagementLevel(level) {
+  if (!level) return 'Junior';
+  const levelLower = level.toLowerCase();
+  if (levelLower.includes('senior') || levelLower.includes('exec')) return 'Senior';
+  if (levelLower.includes('middle') || levelLower.includes('mid')) return 'Middle';
+  if (levelLower.includes('junior') || levelLower.includes('jr')) return 'Junior';
+  return 'Junior'; // default
+}
+
+// Core calculation logic (local, reliable)
+function calculateBEECompliance(employees) {
+  // First, standardize the data locally (don't rely on AI for this)
+  const standardizedEmployees = employees.map(emp => ({
+    race: standardizeRace(emp.race),
+    gender: standardizeGender(emp.gender),
+    management_level: standardizeManagementLevel(emp.management_level)
+  }));
+
+  // Count employees by management level
+  const levels = ['Senior', 'Middle', 'Junior'];
+  const counts = {};
+  
+  levels.forEach(level => {
+    const levelEmployees = standardizedEmployees.filter(emp => emp.management_level === level);
+    const total = levelEmployees.length;
+    const blackEmployees = levelEmployees.filter(emp => emp.race === 'Black');
+    const blackFemaleEmployees = blackEmployees.filter(emp => emp.gender === 'Female');
+    
+    const blackPercentage = total > 0 ? (blackEmployees.length / total) * 100 : 0;
+    const blackFemalePercentage = total > 0 ? (blackFemaleEmployees.length / total) * 100 : 0;
+    
+    counts[level.toLowerCase() + '_management'] = {
+      total_employees: total,
+      black_employees: blackEmployees.length,
+      black_female_employees: blackFemaleEmployees.length,
+      black_percentage: parseFloat(blackPercentage.toFixed(1)),
+      black_female_percentage: parseFloat(blackFemalePercentage.toFixed(1))
+    };
+  });
+
+  // Apply STRICT BINARY scoring
+  const targets = {
+    senior_management: { black: 60, black_female: 30, black_points: 2, black_female_points: 1 },
+    middle_management: { black: 75, black_female: 38, black_points: 2, black_female_points: 1 },
+    junior_management: { black: 88, black_female: 44, black_points: 2, black_female_points: 1 }
+  };
+
+  let totalPoints = 0;
+  const results = {};
+
+  Object.keys(counts).forEach(level => {
+    const data = counts[level];
+    const target = targets[level];
+    
+    if (target) {
+      const blackPoints = data.black_percentage >= target.black ? target.black_points : 0;
+      const blackFemalePoints = data.black_female_percentage >= target.black_female ? target.black_female_points : 0;
+      const levelTotalPoints = blackPoints + blackFemalePoints;
+      
+      results[level] = {
+        ...data,
+        black_target: target.black,
+        black_met_target: data.black_percentage >= target.black,
+        black_points: blackPoints,
+        black_female_target: target.black_female,
+        black_female_met_target: data.black_female_percentage >= target.black_female,
+        black_female_points: blackFemalePoints,
+        level_total_points: levelTotalPoints
+      };
+      
+      totalPoints += levelTotalPoints;
+    }
+  });
+
+  // Calculate disabilities (hardcoded to 0% for now)
+  const disabilityData = {
+    total_employees: standardizedEmployees.length,
+    black_disabled_employees: 0,
+    black_disabled_percentage: 0,
+    black_disabled_target: 2,
+    black_disabled_met_target: false,
+    black_disabled_points: 0
+  };
+
+  totalPoints += disabilityData.black_disabled_points;
+
+  return {
+    ...results,
+    disabilities: disabilityData,
+    total_points: totalPoints,
+    max_points: 11, // 9 from management levels + 2 from disabilities
+    compliance_status: totalPoints >= 8 ? 'Compliant' : 'Non-Compliant', // Adjust threshold as needed
+    employee_count: standardizedEmployees.length
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { sessionId } = await req.json();
+    const { sessionId, includeAIInsights = false } = await req.json();
     
     if (!sessionId) {
       return new Response(
@@ -50,161 +158,62 @@ serve(async (req) => {
       );
     }
 
-    // Prepare employee data for AI analysis
-    const employeeData = employees.map(emp => ({
-      race: emp.race,
-      gender: emp.gender,
-      management_level: emp.management_level
-    }));
+    console.log('Raw employee data count:', employees.length);
 
-    const systemPrompt = `You are a strict B-BBEE compliance auditor. Calculate scores using BINARY thresholds only. Never award partial points. If percentage < target = 0 points. If percentage ≥ target = full points. Return exact percentages without rounding to make results look better.
+    // Calculate BEE compliance LOCALLY (reliable)
+    const complianceResults = calculateBEECompliance(employees);
+    console.log('Local calculation results:', complianceResults);
 
-DATA STANDARDIZATION RULES (Apply these first):
-1. Race Mapping: "African", "Black African", "Black", "Coloured", "Indian", "Chinese" → All count as "Black" for B-BBEE calculations
-2. Gender Mapping: "F", "Female" → "Female"; "M", "Male" → "Male"  
-3. Management Levels: Standardize to "Senior", "Middle", "Junior", "Executive"
+    let aiInsights = null;
 
-STRICT BINARY SCORING RULES:
-- Each criterion is BINARY: Award points ONLY if target percentage is met or exceeded
-- NO partial points for being close to targets
-- Use EXACT percentages from calculations (do not round to look better)
-- Management levels: Senior, Middle, Junior, Executive
-- Black includes: Black African, African, Black, Coloured, Indian, Chinese
+    // Optional: Get AI insights for recommendations only
+    if (includeAIInsights && openAIApiKey) {
+      try {
+        const systemPrompt = `You are a B-BBEE compliance expert. Analyze the calculated scores and provide strategic insights for improvement. Focus on recommendations, not calculations. Be specific and actionable.`;
 
-SCORECARD TARGETS (BINARY LOGIC):
-Senior Management: Black ≥60% (2pts), Black Female ≥30% (1pt)
-Middle Management: Black ≥75% (2pts), Black Female ≥38% (1pt)  
-Junior Management: Black ≥88% (2pts), Black Female ≥44% (1pt)
-Employees with Disabilities: Black ≥2% (2pts)
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { 
+                role: 'user', 
+                content: `Based on these B-BBEE Employment Equity results, provide specific recommendations for improvement. Focus on which areas need the most attention and practical steps to achieve compliance. Results: ${JSON.stringify(complianceResults)}` 
+              }
+            ],
+            max_tokens: 1000,
+            temperature: 0.3,
+          }),
+        });
 
-CALCULATION METHOD:
-1. First standardize all data using mapping rules above
-2. Count total employees in each management level
-3. Count Black employees in each level (using standardized race data)
-4. Count Black Female employees in each level (using standardized race and gender data)
-5. Calculate exact percentages: (Count / Total) × 100 (do not round)
-6. Apply STRICT BINARY logic: points = (percentage >= target) ? max_points : 0
-
-RESPONSE FORMAT (JSON only - no explanations):
-{
-  "senior_management": {
-    "total_employees": 18,
-    "black_employees": 10,
-    "black_female_employees": 5,
-    "black_percentage": 55.6,
-    "black_target": 60,
-    "black_met_target": false,
-    "black_points": 0,
-    "black_female_percentage": 27.8, 
-    "black_female_target": 30,
-    "black_female_met_target": false,
-    "black_female_points": 0,
-    "level_total_points": 0
-  },
-  "middle_management": {
-    "total_employees": 25,
-    "black_employees": 11,
-    "black_female_employees": 8,
-    "black_percentage": 44.0,
-    "black_target": 75,
-    "black_met_target": false,
-    "black_points": 0,
-    "black_female_percentage": 32.0,
-    "black_female_target": 38,
-    "black_female_met_target": false,
-    "black_female_points": 0,
-    "level_total_points": 0
-  },
-  "junior_management": {
-    "total_employees": 56,
-    "black_employees": 48,
-    "black_female_employees": 25,
-    "black_percentage": 85.7,
-    "black_target": 88,
-    "black_met_target": false,
-    "black_points": 0,
-    "black_female_percentage": 44.6,
-    "black_female_target": 44,
-    "black_female_met_target": true,
-    "black_female_points": 1,
-    "level_total_points": 1
-  },
-  "total_points": 1,
-  "max_points": 9,
-  "compliance_status": "Non-Compliant"
-}`;
-
-    console.log('Calling OpenAI with employee data:', JSON.stringify(employeeData));
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { 
-            role: 'user', 
-            content: `Analyze this employee data for B-BBEE Employment Equity compliance. Calculate exact percentages and award points using binary logic only. Employee data: ${JSON.stringify(employeeData)}` 
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.1,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API request failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    console.log('OpenAI response:', JSON.stringify(data));
-
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Invalid OpenAI response structure:', data);
-      return new Response(
-        JSON.stringify({ error: 'Invalid AI response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const aiAnalysis = data.choices[0].message.content;
-    
-    try {
-      // Parse the JSON response from AI
-      const analysisResult = JSON.parse(aiAnalysis);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          analysis: analysisResult,
-          employee_count: employees.length
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        if (response.ok) {
+          const data = await response.json();
+          aiInsights = data.choices[0]?.message?.content || null;
         }
-      );
-    } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError);
-      console.error('AI response was:', aiAnalysis);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to parse AI analysis',
-          raw_response: aiAnalysis 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      } catch (aiError) {
+        console.error('AI insights failed, but continuing with local results:', aiError);
+        // Don't fail the whole request if AI insights fail
+      }
     }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        analysis: complianceResults,
+        ai_insights: aiInsights,
+        calculated_locally: true,
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
 
   } catch (error) {
     console.error('Error in ai-bee-analysis function:', error);
