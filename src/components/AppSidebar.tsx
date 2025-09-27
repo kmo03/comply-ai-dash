@@ -34,9 +34,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
-      <SidebarContent className="bg-secondary/50">
+      {/* set a readable default text color on the whole sidebar */}
+      <SidebarContent className="bg-secondary/50 text-foreground">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-foreground/80 font-medium mb-2">
+          <SidebarGroupLabel className="text-foreground/90 font-medium mb-2">
             BEE Compliance
           </SidebarGroupLabel>
           
@@ -49,15 +50,18 @@ export function AppSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                        [
+                          "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                          // force readable default + full opacity; use hover overrides for hover state
                           isActive
-                            ? "bg-primary text-primary-foreground shadow-sm font-medium"
-                            : "text-foreground/80 hover:bg-muted hover:text-foreground"
-                        }`
+                            ? "bg-primary text-primary-foreground shadow-sm font-medium !opacity-100"
+                            : "!text-foreground/90 !opacity-100 hover:!bg-muted hover:!text-foreground"
+                        ].join(" ")
                       }
                     >
+                      {/* lucide icons inherit currentColor by default */}
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span className="leading-none">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
