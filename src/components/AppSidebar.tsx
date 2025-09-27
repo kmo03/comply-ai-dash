@@ -36,7 +36,7 @@ export function AppSidebar() {
     <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
       <SidebarContent className="bg-secondary/50">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground font-medium mb-2">
+          <SidebarGroupLabel className="text-foreground/80 font-medium mb-2">
             BEE Compliance
           </SidebarGroupLabel>
           
@@ -52,7 +52,7 @@ export function AppSidebar() {
                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                           isActive
                             ? "bg-primary text-primary-foreground shadow-sm font-medium"
-                            : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                            : "text-foreground/80 hover:bg-muted hover:text-foreground"
                         }`
                       }
                     >
