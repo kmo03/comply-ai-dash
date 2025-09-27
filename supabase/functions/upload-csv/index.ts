@@ -130,6 +130,20 @@ serve(async (req) => {
 
     // Store the processed data in Supabase
     if (parsedData.employees && parsedData.employees.length > 0) {
+      // First, delete existing records for this session
+      const { error: deleteError } = await supabase
+        .from('employees')
+        .delete()
+        .eq('session_id', sessionId);
+
+      if (deleteError) {
+        console.error('Database delete error:', deleteError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to clear existing employee data' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const employeeRecords = parsedData.employees.map((employee: any) => ({
         session_id: sessionId,
         name: employee.name,
