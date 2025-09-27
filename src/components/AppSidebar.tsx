@@ -1,4 +1,3 @@
-import { NavLink } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -8,68 +7,81 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { 
-  LayoutDashboard, 
-  Upload, 
-  FileBarChart, 
+} from "@/components/ui/sidebar"
+import {
+  Home,
+  BarChart3,
+  Upload,
+  Table,
   Settings,
-  Users,
-  TrendingUp
-} from "lucide-react";
-
-const navigationItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Upload Data", url: "/upload", icon: Upload },
-  { title: "Results", url: "/results", icon: FileBarChart },
-  { title: "Analytics", url: "/analytics", icon: TrendingUp },
-  { title: "Team", url: "/team", icon: Users },
-  { title: "Settings", url: "/settings", icon: Settings },
-];
+} from "lucide-react"
 
 export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
-
   return (
-    <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
-      {/* set a readable default text color on the whole sidebar */}
-      <SidebarContent className="bg-secondary/50 text-foreground">
+    <Sidebar>
+      <SidebarContent
+        className="
+          bg-secondary/50 text-foreground
+          [&_[data-sidebar=menu-button]]:!text-foreground
+          [&_[data-sidebar=menu-button]]:!opacity-100
+          [&_[data-sidebar=menu-button][data-state=inactive]]:hover:!bg-muted
+          [&_[data-sidebar=menu-button][data-state=inactive]]:hover:!text-foreground
+        "
+      >
         <SidebarGroup>
-          <SidebarGroupLabel className="text-foreground/90 font-medium mb-2">
-            BEE Compliance
+          <SidebarGroupLabel className="text-foreground/80">
+            Main
           </SidebarGroupLabel>
-          
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className={({ isActive }) =>
-                        [
-                          "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
-                          // force readable default + full opacity; use hover overrides for hover state
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-sm font-medium !opacity-100"
-                            : "!text-foreground/90 !opacity-100 hover:!bg-muted hover:!text-foreground"
-                        ].join(" ")
-                      }
-                    >
-                      {/* lucide icons inherit currentColor by default */}
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!collapsed && <span className="leading-none">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#">
+                    <Home className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#">
+                    <Upload className="mr-2 h-4 w-4" />
+                    <span>Upload</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#">
+                    <Table className="mr-2 h-4 w-4" />
+                    <span>Data</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    <span>Analysis</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  );
+  )
 }
