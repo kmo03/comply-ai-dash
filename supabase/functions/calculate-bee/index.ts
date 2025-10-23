@@ -1,15 +1,3 @@
-// @ts-ignore - Deno module resolution
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-ignore - Deno module resolution  
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// Declare Deno global for TypeScript
-declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
-};
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -52,13 +40,6 @@ interface BEEResult {
     blackFemalePoints: number;
     totalPoints: number;
   };
-  disabilities: {
-    total: number;
-    blackDisabled: number;
-    blackDisabledPercentage: number;
-    target: number;
-    points: number;
-  };
   totalScore: number;
   maxScore: number;
 }
@@ -70,47 +51,11 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { sessionId } = body;
-    
-    if (!sessionId) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing sessionId',
-          code: 'MISSING_SESSION_ID',
-          message: 'A valid session ID is required to calculate BEE scores'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid sessionId format',
-          code: 'INVALID_SESSION_ID',
-          message: 'Session ID must be a non-empty string'
-        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing Supabase configuration');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Server configuration error',
-          code: 'CONFIG_ERROR',
-          message: 'Server is not properly configured'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch employees data for the session
@@ -122,54 +67,17 @@ serve(async (req) => {
     if (error) {
       console.error('Database fetch error:', error);
       return new Response(
-        JSON.stringify({ 
-          error: 'Failed to fetch employee data',
-          code: 'DATABASE_FETCH_ERROR',
-          message: 'Unable to retrieve employee data from database',
-          details: error.message
-        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!employees || employees.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          error: 'No employee data found',
-          code: 'NO_DATA_FOUND',
-          message: 'No employee data found for this session. Please upload employee data first.',
-          sessionId: sessionId
-        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Calculate BEE scores based on BEE Generic Scorecard rules
-    let result;
-    try {
-      result = calculateBEEScore(employees);
-    } catch (calcError) {
-      console.error('BEE calculation error:', calcError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'BEE calculation failed',
-          code: 'CALCULATION_ERROR',
-          message: 'Failed to calculate BEE scores',
-          details: calcError instanceof Error ? calcError.message : 'Unknown calculation error'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        ...result,
-        metadata: {
-          employeeCount: employees.length,
-          calculatedAt: new Date().toISOString(),
-          sessionId: sessionId
-        }
-      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -186,23 +94,6 @@ serve(async (req) => {
 });
 
 function calculateBEEScore(employees: Employee[]): BEEResult {
-  // Validate input
-  if (!employees || !Array.isArray(employees) || employees.length === 0) {
-    throw new Error('Invalid employee data: must be a non-empty array');
-  }
-
-  // Validate employee structure
-  const invalidEmployees = employees.filter(emp => 
-    !emp || 
-    typeof emp.race !== 'string' || 
-    typeof emp.gender !== 'string' || 
-    typeof emp.management_level !== 'string'
-  );
-  
-  if (invalidEmployees.length > 0) {
-    console.warn(`Found ${invalidEmployees.length} employees with invalid data structure`);
-  }
-
   // Separate employees by management level
   const senior = employees.filter(emp => emp.management_level === 'Senior');
   const middle = employees.filter(emp => emp.management_level === 'Middle');
