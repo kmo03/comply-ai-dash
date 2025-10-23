@@ -114,11 +114,15 @@ export interface EmployeesResponse {
 
 // Upload CSV file and process with AI
 export async function uploadCSV(csvData: string, sessionId: string): Promise<UploadResponse> {
+  console.log('Calling upload-csv function with sessionId:', sessionId);
   const { data, error } = await supabase.functions.invoke('upload-csv', {
     body: { csvData, sessionId }
   });
 
+  console.log('Upload CSV response:', { data, error });
+
   if (error) {
+    console.error('Upload CSV error:', error);
     throw new Error(error.message || "Failed to upload CSV");
   }
 
@@ -127,11 +131,15 @@ export async function uploadCSV(csvData: string, sessionId: string): Promise<Upl
 
 // Calculate BEE scores
 export async function calculateBEE(sessionId: string): Promise<BEECalculationResult> {
+  console.log('Calling calculate-bee function with sessionId:', sessionId);
   const { data, error } = await supabase.functions.invoke('calculate-bee', {
     body: { sessionId }
   });
 
+  console.log('Calculate BEE response:', { data, error });
+
   if (error) {
+    console.error('Calculate BEE error:', error);
     throw new Error(error.message || "Failed to calculate BEE scores");
   }
 
@@ -157,9 +165,13 @@ export async function calculateBEEWithAI(sessionId: string): Promise<AIBEEAnalys
 
 // Get employees for a session
 export async function getEmployees(sessionId: string): Promise<EmployeesResponse> {
+  console.log('Calling get-employees function with sessionId:', sessionId);
   const { data, error } = await supabase.functions.invoke(`get-employees/${sessionId}`, {});
 
+  console.log('Get employees response:', { data, error });
+
   if (error) {
+    console.error('Get employees error:', error);
     throw new Error(error.message || "Failed to get employees");
   }
 

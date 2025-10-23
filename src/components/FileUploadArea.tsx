@@ -27,76 +27,138 @@ export function FileUploadArea({ onFileProcessed, isProcessing = false, onFileSe
     setIsDragOver(false);
   }, []);
 
-  const validateFile = useCallback((file: File) => {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please upload a CSV file.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      toast({
-        title: "File Too Large",
-        description: "Please upload a CSV file smaller than 10MB.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    return true;
-  }, [toast]);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     
     const files = Array.from(e.dataTransfer.files);
-    const file = files[0];
-    
-    if (file && validateFile(file)) {
-      onFileSelect?.(file);
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
     }
-  }, [validateFile, onFileSelect]);
+  }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && validateFile(file)) {
-      onFileSelect?.(file);
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a CSV file.",
+        variant: "destructive",
+      });
+      return;
     }
-    // Reset input
-    e.target.value = '';
-  }, [validateFile, onFileSelect]);
 
-  // Show processing state when isProcessing is true
-  if (isProcessing) {
-    return (
-      <Card className="shadow-card hover:shadow-hover transition-shadow duration-200">
-        <CardContent className="p-8">
-          <div className="border-2 border-dashed rounded-lg p-8 text-center border-primary bg-primary/5">
-            <div className="space-y-4">
-              <Upload className="mx-auto h-12 w-12 text-primary animate-pulse" />
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Processing File...
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  AI is analyzing and standardizing your employee data
-                </p>
-                <div className="w-full max-w-xs mx-auto">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Processing...</span>
-                  </div>
-                  <Progress value={undefined} className="h-2" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadedFile(file.name);
+    setUploadProgress(0);
+
+    // Simulate upload progress
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 100);
+
+    try {
+      if (onFileSelect) {
+        await onFileSelect(file);
+      }
+      
+      toast({
+        title: "File uploaded successfully",
+        description: `${file.name} has been processed.`,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error processing your file.",
+        variant: "destructive",
+      });
+    }
+  }, [onFileSelect, toast]);
 
   return (
+    <Card className="shadow-card hover:shadow-hover transition-shadow duration-200 card-border-thin equal-height">
+      <CardContent className="p-8 flex flex-col justify-center h-full">
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 ${
+            isDragOver
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-primary/50 hover:bg-secondary/50'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="space-y-4">
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Upload Employee Data
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Drag and drop your CSV file here, or click to browse
+              </p>
+              <p className="text-xs text-muted-foreground mb-4">
+                CSV format required with columns: Name, Race, Gender, Management_Level
+              </p>
+              
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                className="hidden"
+                id="file-upload"
+              />
+              
+              <Button asChild className="cursor-pointer bg-yellow-400 hover:bg-yellow-500 text-black font-medium">
+                <label htmlFor="file-upload">
+                  Choose File
+                </label>
+              </Button>
+              
+              <p className="text-xs text-muted-foreground mt-3">
+                AI will automatically standardize race, gender, and management level data
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upload Progress */}
+        {isProcessing && (
+          <div className="mt-6 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Processing...</span>
+              <span className="text-muted-foreground">{uploadProgress}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-2" />
+          </div>
+        )}
+
+        {/* Upload Success */}
+        {uploadedFile && !isProcessing && (
+          <div className="mt-6 flex items-center justify-center space-x-2 text-green-600">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">{uploadedFile} uploaded successfully</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

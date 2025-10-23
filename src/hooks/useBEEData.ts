@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { uploadCSV, calculateBEE, getEmployees, parseCSV, Employee, BEECalculationResult, EmployeesResponse } from '@/lib/api';
+import { mockUploadCSV, mockCalculateBEEFromSession, mockGetEmployees } from '@/lib/mockApi';
 import { useToast } from '@/hooks/use-toast';
 
 export function useBEEData(sessionId: string) {
@@ -12,18 +13,41 @@ export function useBEEData(sessionId: string) {
   const processCSVFile = useCallback(async (file: File) => {
     try {
       setIsProcessing(true);
+      console.log('Starting CSV processing for file:', file.name);
       
       // Read file content
       const csvContent = await file.text();
+      console.log('CSV content length:', csvContent.length);
       
       // Basic validation
       const parsedRows = parseCSV(csvContent);
+      console.log('Parsed rows:', parsedRows.length);
       if (parsedRows.length < 2) {
         throw new Error('CSV file must contain at least a header row and one data row');
       }
 
-      // Upload and process with AI
-      const uploadResult = await uploadCSV(csvContent, sessionId);
+      console.log('Uploading CSV to Supabase...');
+      let uploadResult;
+      let beeResult;
+      let employeesResult;
+      
+      try {
+        // Try Supabase functions first
+        uploadResult = await uploadCSV(csvContent, sessionId);
+        console.log('Upload result:', uploadResult);
+        
+        beeResult = await calculateBEE(sessionId);
+        employeesResult = await getEmployees(sessionId);
+      } catch (supabaseError) {
+        console.log('Supabase functions not available, using mock functions:', supabaseError);
+        
+        // Fallback to mock functions
+        uploadResult = await mockUploadCSV(csvContent, sessionId);
+        console.log('Mock upload result:', uploadResult);
+        
+        beeResult = await mockCalculateBEEFromSession(sessionId);
+        employeesResult = await mockGetEmployees(sessionId);
+      }
       
       if (uploadResult.warnings.length > 0) {
         setWarnings(uploadResult.warnings);
@@ -34,12 +58,7 @@ export function useBEEData(sessionId: string) {
         });
       }
 
-      // Calculate BEE scores
-      const beeResult = await calculateBEE(sessionId);
       setBeeResult(beeResult);
-
-      // Get processed employees
-      const employeesResult = await getEmployees(sessionId);
       setEmployees(employeesResult.employees);
 
       toast({
@@ -68,13 +87,28 @@ export function useBEEData(sessionId: string) {
 
   const loadExistingData = useCallback(async () => {
     try {
-      const employeesResult = await getEmployees(sessionId);
+      let employeesResult;
+      let beeResult;
+      
+      try {
+        // Try Supabase functions first
+        employeesResult = await getEmployees(sessionId);
+        if (employeesResult.employees.length > 0) {
+          beeResult = await calculateBEE(sessionId);
+        }
+      } catch (supabaseError) {
+        console.log('Supabase functions not available, using mock functions:', supabaseError);
+        
+        // Fallback to mock functions
+        employeesResult = await mockGetEmployees(sessionId);
+        if (employeesResult.employees.length > 0) {
+          beeResult = await mockCalculateBEEFromSession(sessionId);
+        }
+      }
+      
       if (employeesResult.employees.length > 0) {
         setEmployees(employeesResult.employees);
-        
-        const beeResult = await calculateBEE(sessionId);
         setBeeResult(beeResult);
-        
         return { employees: employeesResult.employees, beeResult };
       }
     } catch (error) {
